@@ -17,3 +17,39 @@ jobs:
           reporter: github-pr-review        # ← inline review komentarji
           filter_mode: added                # ← samo dodane vrstice v PR-ju
           fail_level: none                  # ← ne failaj joba zaradi kršitev
+
+  eslint-frontend:
+    name: ESLint (frontend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: npm-${{ runner.os }}-
+
+      - run: npm ci
+
+      # ESLint + reviewdog → inline PR komentarji samo za dodane vrstice
+      - name: ESLint via reviewdog
+        uses: reviewdog/action-eslint@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          workdir: frontend
+          reporter: github-pr-review
+          filter_mode: added
+          fail_on_error: 'false'
+          eslint_flags: '--ext .js,.jsx,.ts,.tsx .'
+
