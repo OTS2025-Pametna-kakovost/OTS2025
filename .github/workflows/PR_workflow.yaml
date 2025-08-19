@@ -1,13 +1,27 @@
-name: reviewdog
-on: [pull_request]
+name: reviewdog-checkstyle
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  checks: write            # za Checks API
+  pull-requests: read
+
 jobs:
-  checkstyle:
-    name: runner / checkstyle
+  checkstyle-backend:
+    name: Checkstyle (backend)
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
-      - uses: dbelyaev/action-checkstyle@master
+
+      - name: Checkstyle via reviewdog (Checks API)
+        uses: dbelyaev/action-checkstyle@v2
         with:
-          github_token: ${{ secrets.github_token }}
-          reporter: github-pr-review
-          level: warning
+          github_token: ${{ secrets.GITHUB_TOKEN }}   # pravilno ime secreta
+          workdir: backend                            # monorepo: skeniraj le backend
+          # reporter: github-pr-check                 # privzeto je že github-pr-check
+          # filter_mode: added                        # privzeto je že added
+          # fail_level: none                          # privzeto je none
+          # checkstyle_config: google_checks.xml      # ali tvoj custom npr. .github/checkstyle.xml
