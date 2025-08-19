@@ -53,7 +53,7 @@ public class Measurement {
 		return value;
 	}
 
-	public void setValue(double value) {
+	public void setvalue(double value) {
 		this.value = value;
 	}
 
