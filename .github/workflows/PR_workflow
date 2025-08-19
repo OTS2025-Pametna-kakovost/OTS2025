@@ -1,0 +1,50 @@
+name: reviewdog-checkstyle
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  checkstyle-backend:
+    name: Checkstyle (backend) → PR comments
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '20'
+
+      - name: Cache Maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: m2-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: m2-${{ runner.os }}-
+
+      # Ustvari Checkstyle XML poročilo za modul v podmapi 'backend'
+      - name: Run Checkstyle (generate report)
+        run: mvn -f backend/pom.xml -B -DskipTests=true checkstyle:checkstyle
+
+      # Namesti reviewdog
+      - name: Setup reviewdog
+        uses: reviewdog/action-setup@v1
+
+      # Preberi Checkstyle XML in komentiraj PR
+      - name: Report with reviewdog
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          reviewdog -f=checkstyle \
+            -name="Checkstyle (backend)" \
+            -reporter=github-pr-review \
+            -level=warning \
+            -filter-mode=nofilter \
+            < backend/target/checkstyle-result.xml
