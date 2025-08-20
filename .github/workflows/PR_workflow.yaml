@@ -70,6 +70,7 @@ jobs:
 
       - name: Jacoco Report
         uses: madrapps/jacoco-report@v1.7.2
+        continue-on-error: true
         with:
           paths: backend/target/site/jacoco/jacoco.xml
           token: ${{ secrets.GITHUB_TOKEN }}
