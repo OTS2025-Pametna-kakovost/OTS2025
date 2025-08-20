@@ -1,0 +1,13 @@
+version: "1.0"
+profile:
+  name: qodana.recommended
+failureConditions:
+  severityThresholds:
+    any: 2 # Total problems
+    critical: 1 # Critical and other severities
+    high: 1
+    moderate: 1
+    low: 2
+    info: 3
+
+linter: jetbrains/qodana-jvm-community:latest
