@@ -33,7 +33,7 @@ public class MeasurementController {
                     Measurement vao = new Measurement(m, item);
                     boolean ok = true;
 
-                    if (m.avgTemperature() < item.getminmeasure()) {
+                    if (m.avgTemperature() < item.getMinMeasure()) {
                         log.info(() -> "/product_measurement sent: " + m + "; product: " + item + "; ACTION NEEDED-lower");
                         ok = false;
                     }
