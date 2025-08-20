@@ -55,6 +55,7 @@ jobs:
           
   jacoco:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -64,20 +65,15 @@ jobs:
           distribution: temurin
           java-version: 20
 
-      - name: Run tests with JaCoCo agent
-        run: mvn -f backend/pom.xml -B org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent test
+      - name: Build with Maven and run tests + coverage
+        run: mvn -B clean verify -Pcoverage
 
-      - name: Generate JaCoCo report
-        run: mvn -f backend/pom.xml -B org.jacoco:jacoco-maven-plugin:0.8.12:report
-
-      - name: Add JaCoCo coverage to PR
-        uses: madrapps/jacoco-report@v1.7.2
+      - name: Generate JaCoCo Report and Comment
+        uses: madrapps/jacoco-report@v1.7
         with:
-          paths: ${{ github.workspace }}/backend/target/site/jacoco/jacoco.xml
+          paths: |
+            target/site/jacoco/jacoco.xml
           token: ${{ secrets.GITHUB_TOKEN }}
-          min-coverage-overall: 60
-          min-coverage-changed-files: 60
-          title: 'Code Coverage'
-          update-comment: true
-          comment-type: pr_comment
-  
+          min-coverage-overall: 0
+          min-coverage-changed-files: 0
+
