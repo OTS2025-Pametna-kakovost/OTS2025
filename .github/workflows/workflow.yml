@@ -66,13 +66,11 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-        # ports: NI POTREBNO, ker v CI dostopaš prek DNS imena "postgres"
-        # ports:
-        #   - 5432:5432
+        ports:
+          - 5432:5432
   
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
   
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -80,38 +78,33 @@ jobs:
           distribution: temurin
           java-version: '20'
           cache: maven
+  
       - name: Make Maven Wrapper executable
         run: chmod +x mvnw
         working-directory: backend
-
   
-      # 🔹 Zgradi in zaženi Quarkus kot paketirano aplikacijo, ne v dev načinu
       - name: Build backend (package, no tests)
         working-directory: backend
-        run: ./mvnw -B -DskipTests clean package
+        run: ./mvnw -B clean package -DskipTests
   
       - name: Start backend (background) + logs
         working-directory: backend
         env:
-          # ↙️ prepiše application.properties za CI: DNS hostname je "postgres"
-          QUARKUS_DATASOURCE_REACTIVE_URL: postgresql://postgres:5432/measdb
+          QUARKUS_DATASOURCE_REACTIVE_URL: vertx-reactive:postgresql://localhost:5432/measdb
           QUARKUS_DATASOURCE_USERNAME: ${{ secrets.POSTGRES_USER }}
           QUARKUS_DATASOURCE_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          # ↙️ ker je baza sveža v CI: naj Quarkus sam izdela shemo/sekvence
           QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION: drop-and-create
-          # (imaš že port 8280 v properties; dodajam še env za vsak slučaj)
           QUARKUS_HTTP_PORT: '8280'
         run: |
           nohup java -jar target/quarkus-app/quarkus-run.jar > ../backend.log 2>&1 &
           echo $! > ../backend.pid
           sleep 2
-          echo "Backend PID: $(cat ../backend.pid)"
   
-      - name: Wait for Quarkus (8280)
+      - name: Wait for Quarkus (8280) – real endpoint
         run: |
-          echo "Waiting for Quarkus http://localhost:8280 ..."
+          echo "Waiting for Quarkus http://localhost:8280/api/v1/hello ..."
           for i in {1..60}; do
-            if curl -sS -I http://localhost:8280 >/dev/null; then
+            if curl -fsS http://localhost:8280/api/v1/hello >/dev/null; then
               echo "Backend is up."
               exit 0
             fi
