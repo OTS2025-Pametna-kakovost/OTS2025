@@ -79,7 +79,6 @@ jobs:
         with:
           distribution: temurin
           java-version: '20'
-          cache: maven
   
       - name: Make Maven Wrapper executable
         run: chmod +x mvnw
@@ -120,11 +119,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
-          cache: 'npm'
   
       - name: Install frontend deps
         working-directory: frontend
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
   
       - name: Start frontend (background)
         working-directory: frontend
@@ -151,7 +154,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
-          cache: 'npm'
   
       - name: Install deps (root)
         working-directory: .
@@ -167,7 +169,7 @@ jobs:
         run: npx cypress run
         env:
           CYPRESS_BASE_URL: http://localhost:3000
-          # CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}  # samo če uporabljaš Cypress Dashboard
+          # CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}  # če uporabljaš Cypress Dashboard
   
       # --- LOGI / ARTEFAKTI ---
       - name: Upload Cypress artifacts (screenshots & videos)
