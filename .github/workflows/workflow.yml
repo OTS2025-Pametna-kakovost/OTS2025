@@ -147,9 +147,9 @@ jobs:
           exit 1
   
       - name: Run Cypress tests
+        run: npx cypress run
         working-directory: frontend
-        run: npm run cypress:run
-  
+
       - name: Teardown (dump last logs)
         if: always()
         run: |
