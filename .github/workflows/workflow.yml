@@ -80,6 +80,10 @@ jobs:
           distribution: temurin
           java-version: '20'
           cache: maven
+      - name: Make Maven Wrapper executable
+        run: chmod +x mvnw
+        working-directory: backend
+
   
       # 🔹 Zgradi in zaženi Quarkus kot paketirano aplikacijo, ne v dev načinu
       - name: Build backend (package, no tests)
