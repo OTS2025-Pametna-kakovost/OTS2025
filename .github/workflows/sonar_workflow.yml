@@ -3,26 +3,49 @@ name: SONAR_SCAN
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - 'frontend/**'
   pull_request:
     branches: [ "main" ]
+    paths:
+      - 'frontend/**'
   workflow_dispatch:
 
 jobs:
   build:
-    name: Build and analyze
+    name: Build and analyze FE only
     runs-on: ubuntu-latest
+    # (Optional) skip forked PRs where secrets aren't available
+    if: >
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
 
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - uses: SonarSource/sonarqube-scan-action@v5
+          fetch-depth: 0
+
+      # (Optional) run FE tests to produce coverage (adjust to your stack)
+      - uses: actions/setup-node@v4
+        with:
+           node-version: '20'
+      - name: Install & test frontend
+        working-directory: frontend
+        run: |
+           npm ci
+           npm test -- --coverage
+
+      - name: SonarQube Scan (frontend only)
+        uses: SonarSource/sonarqube-scan-action@v5
+        with:
+          projectBaseDir: frontend
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-      # if you wish to fail your job when the quality gate is red, uncomment the
-      # following lines. this would typically be used to fail a deployment.
-      - uses: sonarsource/sonarqube-quality-gate-action@v1
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Quality Gate
+        uses: sonarsource/sonarqube-quality-gate-action@v1
         timeout-minutes: 5
         env:
-          sonar_token: ${{ secrets.sonar_token }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
