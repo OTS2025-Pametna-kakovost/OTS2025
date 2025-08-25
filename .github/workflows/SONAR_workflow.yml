@@ -1,4 +1,4 @@
-name: SonarCloud (Frontend & Backend)
+name: SonarCloud (Frontend, Backend & Monorepo)
 
 on:
   workflow_dispatch:
@@ -88,3 +88,62 @@ jobs:
           mvn -B verify
           org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
           -Dsonar.projectKey=ots2025_be
+
+  sonar_monorepo:
+    name: SonarCloud Monorepo (Full Repo)
+    runs-on: ubuntu-latest
+    # Optional: wait for per-project scans; remove if you want it independent
+    needs: [ sonar_backend, sonar_frontend ]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0   # better for PR decoration/new code detection
+
+      # --- Build backend to provide bytecode for Java rules ---
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'adopt'
+          java-version: '20'
+          cache: maven
+
+      - name: Build backend (no tests)
+        working-directory: backend
+        run: mvn -B -DskipTests package
+
+      # --- Optionally prep frontend coverage (if you want to feed LCOV) ---
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      # - name: Run frontend tests (coverage)
+      #   working-directory: frontend
+      #   run: npm test -- --coverage || true
+
+      # --- Sonar scan at repo root as a separate project on SonarCloud ---
+      - name: SonarCloud Scan Monorepo
+        uses: SonarSource/sonarqube-scan-action@v5
+        with:
+          projectBaseDir: .
+          args: >
+            -Dsonar.projectKey=ots2025_monorepo
+            -Dsonar.organization=ots2025-pametna-kakovost
+            -Dsonar.sources=backend/src/main/java,frontend/src
+            -Dsonar.tests=backend/src/test/java,frontend/src
+            -Dsonar.test.inclusions=frontend/src/**/*.test.js,frontend/src/**/*.test.jsx,frontend/src/**/*.spec.js,frontend/src/**/*.spec.jsx
+            -Dsonar.java.binaries=backend/target/classes
+            # If you produce LCOV, uncomment:
+            # -Dsonar.javascript.lcov.reportPaths=frontend/coverage/lcov.info
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_REPO }}   # create this, or reuse SONAR_TOKEN_BE
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
