@@ -239,3 +239,70 @@ jobs:
           tail -n 100 frontend.log || true
           if [ -f backend.pid ]; then kill $(cat backend.pid) || true; fi
           if [ -f frontend.pid ]; then kill $(cat frontend.pid) || true; fi
+
+  sonar_frontend:
+    name: SonarCloud Frontend
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: SonarCloud Scan Frontend
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_FE }}
+        with:
+          args: '-Dsonar.projectKey=ots2025_fe'
+
+    sonar_backend:
+      name: SonarCloud Backend
+      runs-on: ubuntu-latest
+
+      defaults:
+        run:
+          working-directory: backend
+
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v3
+
+        - name: Setup Java
+          uses: actions/setup-java@v3
+          with:
+            distribution: 'adopt'
+            java-version: '20'
+            cache: maven
+
+        - name: Cache SonarCloud packages
+          uses: actions/cache@v3
+          with:
+            path: ~/.sonar/cache
+            key: ${{ runner.os }}-sonar
+            restore-keys: ${{ runner.os }}-sonar
+
+        - name: Cache Maven packages
+          uses: actions/cache@v3
+          with:
+            path: ~/.m2
+            key: ${{ runner.os }}-m2-${{ hashFiles('backend/**/pom.xml') }}
+            restore-keys: ${{ runner.os }}-m2
+
+        - name: Build and analyze
+          env:
+            SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_BE }}
+          run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=ots2025_be
