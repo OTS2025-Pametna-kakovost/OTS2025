@@ -49,6 +49,7 @@ jobs:
   BE-docker-image-delivery:
     name: BE Docker Image Delivery
     runs-on: ubuntu-latest
+    needs: BE-build-test-package
 
     steps:
       - uses: actions/checkout@v3
@@ -102,7 +103,7 @@ jobs:
         working-directory: frontend
 
       - name: Cache node modules
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: frontend/node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
