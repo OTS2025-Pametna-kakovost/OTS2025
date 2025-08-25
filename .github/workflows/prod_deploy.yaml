@@ -2,7 +2,7 @@ name: Deploy app
 
 on:
   push:
-    branches: [ "prod", "main" ]
+    branches: [ "prod" ]
 
 jobs:
   BE-build-test-package:
