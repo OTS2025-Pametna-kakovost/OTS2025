@@ -13,8 +13,10 @@ jobs:
   build:
     name: Build and analyze FE only
     runs-on: ubuntu-latest
+    # Uncomment if your SONAR_HOST_URL var is stored in an environment (e.g., "prod")
+    # environment: prod
 
-    # Skip forked PRs (no secrets there). Remove if you don't accept external PRs.
+    # Skip forked PRs (vars/secrets are unavailable there)
     if: >
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
@@ -24,27 +26,30 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Fail fast if URL/token aren't present
       - name: Sanity check Sonar env
         run: |
           echo "SONAR_HOST_URL=${SONAR_HOST_URL:-<EMPTY>}"
-          test -n "${SONAR_HOST_URL}" || { echo "::error::Missing SONAR_HOST_URL (set as a Repository Variable)"; exit 1; }
-          test -n "${SONAR_TOKEN}" || { echo "::error::Missing SONAR_TOKEN (set as a Repository Secret)"; exit 1; }
+          test -n "${SONAR_HOST_URL}" || { echo "::error::Missing SONAR_HOST_URL"; exit 1; }
+          test -n "${SONAR_TOKEN}" || { echo "::error::Missing SONAR_TOKEN"; exit 1; }
         env:
-          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          # Pick ONE source and be consistent:
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN:     ${{ secrets.SONAR_TOKEN }}
 
       - name: SonarQube Scan (frontend)
         uses: SonarSource/sonarqube-scan-action@v5
         with:
           projectBaseDir: frontend
+          # Force the host explicitly so the CLI never defaults to localhost
+          args: >
+            -Dsonar.host.url=${{ vars.SONAR_HOST_URL || secrets.SONAR_HOST_URL }}
         env:
-          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}   # e.g. https://sonarcloud.io or your SQ URL
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN:     ${{ secrets.SONAR_TOKEN }}
 
       - name: Quality Gate
         uses: sonarsource/sonarqube-quality-gate-action@v1
         timeout-minutes: 5
         env:
-          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN:     ${{ secrets.SONAR_TOKEN }}
