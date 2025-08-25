@@ -6,9 +6,9 @@ Najprej zaženite podatkovno bazo:
 
 ```bash
 docker run --name measurements-db \
-  -e POSTGRES_USER=username \
-  -e POSTGRES_PASSWORD=password \
-  -e POSTGRES_DB=db \
+  -e POSTGRES_USER=postgres_user \
+  -e POSTGRES_PASSWORD=postgres_pwd \
+  -e POSTGRES_DB=measdb \
   -p 5432:5432 -d postgres:15
 ```
 

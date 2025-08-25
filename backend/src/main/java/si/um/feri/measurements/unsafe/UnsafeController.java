@@ -2,16 +2,16 @@ package si.um.feri.measurements.unsafe;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.persistence.EntityManager;
-import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import io.smallrye.mutiny.Uni;
+import org.hibernate.reactive.mutiny.Mutiny;
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
-import java.util.List;
 import java.util.Random;
 import java.util.logging.Logger;
 
@@ -26,23 +26,24 @@ public class UnsafeController {
     private static final String DB_PASSWORD = "SuperSecretPassword123!"; // NOSONAR
 
     @Inject
-    EntityManager em;
+    Mutiny.SessionFactory sf;
 
     @GET
     @Path("/products")
-    @Transactional
-    public Response vulnerableSql(@QueryParam("name") String name) {
-        // SQL Injection via string concatenation
+    public Uni<Response> vulnerableSql(@QueryParam("name") String name) {
+        // SQL Injection via string concatenation (intentionally vulnerable)
         String sql = "SELECT id, name FROM product WHERE name = '" + name + "'";
-        LOG.info("Executing: " + sql);
+        LOG.info("Executing (reactive): " + sql);
 
-        @SuppressWarnings("unchecked")
-        List<Object[]> rows = em.createNativeQuery(sql).getResultList(); // Non-parameterized query
-
-        // Leaks secret to logs (Information exposure)
-        LOG.warning("Using DB password: " + DB_PASSWORD); // intentionally bad
-
-        return Response.ok(rows).build();
+        return sf.withSession(session ->
+                session.createNativeQuery(sql)
+                        .getResultList()
+                        .map(rows -> {
+                            // Leaks secret to logs (Information exposure)
+                            LOG.warning("Using DB password: " + DB_PASSWORD); // intentionally bad
+                            return Response.ok(rows).build();
+                        })
+        );
     }
 
     @POST
