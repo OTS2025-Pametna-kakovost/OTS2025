@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ "prod" ]
+    branches: [ "prod", "main" ]
   pull_request:
-    branches: [ "prod" ]
+    branches: [ "prod", "main" ]
 
 jobs:
   BE-build-test-package:
@@ -114,7 +114,7 @@ jobs:
         working-directory: frontend
 
       - name: Upload frontend build artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: frontend-build
           path: frontend/build/
