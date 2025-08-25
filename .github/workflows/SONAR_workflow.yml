@@ -135,7 +135,7 @@ jobs:
         with:
           projectBaseDir: .
           args: >
-            -Dsonar.projectKey=ots2025_monorepo
+            -Dsonar.projectKey=OTS2025
             -Dsonar.organization=ots2025-pametna-kakovost
             -Dsonar.sources=backend/src/main/java,frontend/src
             -Dsonar.tests=backend/src/test/java,frontend/src
