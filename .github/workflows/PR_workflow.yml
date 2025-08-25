@@ -1,4 +1,4 @@
-name: reviewdog-checkstyle
+name: PR_workflow
 on: pull_request
 
 permissions:
