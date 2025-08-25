@@ -14,10 +14,10 @@ describe('upravljanje izdelka', () => {
       cy.get('tbody tr').children('[id^="productsTableBodyName"]').contains(product).should('not.exist') // [] iskanje po atributih značk, ^= delno ujemanje
       cy.get('#addNewProductButton').click()
       cy.get('#addProductNameInput').type(product)
-      cy.get('#addProductMaxInput').type(`${minTemp}`) // Za uporabo spremenljivk ${} mora bit string deklariran z ` (AltGr + 7), njihove komande {enter} etc. delajo tudi z navadnim '
-      cy.get('#addProductMinInput').type(`${maxTemp}`)
+      cy.get('#addProductMaxInput').type(`${minemp}`) // Za uporabo spremenljivk ${} mora bit string deklariran z ` (AltGr + 7), njihove komande {enter} etc. delajo tudi z navadnim '
+      cy.get('#addProductMinInput').type(`${maxemp}`)
       cy.get('#addProductButton').click()
-      cy.get('tbody tr').children('[id^="productsTableBodyName"]').contains(product).should('exist')
+      cy.get('tbody tr').children('[id^="productsTableBodyNam"]').contains(product).should('exist')
   })
 
   it('uredi-izdelek', () => {
