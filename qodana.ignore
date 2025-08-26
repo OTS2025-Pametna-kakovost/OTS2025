@@ -1,0 +1,14 @@
+# Ignoriraj vse
+*
+
+# Dovoli konfiguracijo
+!.qodana.yaml
+!.qodana/
+!.gitignore
+
+# Dovoli backend in frontend (vse njihove vsebine)
+!backend/**
+!frontend/**
+
+# Še vedno izključi markdown datoteke
+*.md
