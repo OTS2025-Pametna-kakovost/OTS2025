@@ -17,6 +17,7 @@ export default function DemoUnused() {
             <h2>Demo Unused Component</h2>
             <p>This component is not used anywhere.</p>
             <p>Stored password: {password}</p>
+            <p>Stored username: {password}</p>
         </div>
     );
 }
