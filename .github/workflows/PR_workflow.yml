@@ -1,5 +1,7 @@
 name: PR_workflow
-on: pull_request
+on: 
+  pull_request:
+    branches: [ "main", "PR-demo"]
 
 permissions:
   contents: read
@@ -50,7 +52,6 @@ jobs:
           workdir: frontend
           reporter: github-pr-review
           filter_mode: added
-          fail_on_error: 'false'
           eslint_flags: '--ext .js,.jsx,.ts,.tsx .'
           
   jacoco:
@@ -90,7 +91,6 @@ jobs:
   
       - name: Jacoco Report
         uses: madrapps/jacoco-report@v1.7.2
-        continue-on-error: true
         with:
           paths: backend/target/site/jacoco/jacoco.xml
           token: ${{ secrets.GITHUB_TOKEN }}

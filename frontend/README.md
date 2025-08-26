@@ -1,4 +1,4 @@
-# React Frontend
+# demo_frontend
 
 ## `npm start`
 
