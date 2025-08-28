@@ -1,0 +1,43 @@
+name: Demo (for coderabbit)
+
+on:
+  workflow_dispatch: {}     # ročni zagon, da nič ne moti
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "prepare"
+
+  lint_fe:
+    runs-on: ubuntu-latest
+    needs: [prepare]
+    steps:
+      - run: echo "lint fe"
+
+  lint_be:
+    runs-on: ubuntu-latest
+    needs: [prepare]
+    steps:
+      - run: echo "lint be"
+
+  tests:
+    runs-on: ubuntu-latest
+    needs: [lint_fe, lint_be]
+    steps:
+      - run: echo "unit tests"
+
+  package:
+    runs-on: ubuntu-latest
+    needs: [tests]
+    steps:
+      - run: echo "package"
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: [package]
+    strategy:
+      matrix:
+        shard: [1, 2]   # malo paralelizacije, da je graf lepši
+    steps:
+      - run: echo "e2e shard ${{ matrix.shard }}"

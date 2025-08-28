@@ -14,7 +14,7 @@ describe('upravljanje izdelka', () => {
     cy.get('tbody tr').children('[id^="productsTableBodyName"]').contains(product).should('not.exist') // [] iskanje po atributih značk, ^= delno ujemanje
     cy.get('#addNewProductButton').click()
     cy.get('#addProductNameInput').type(product)
-    cy.get('#addProductMaxInput').type(`${minTemp}`) // Za uporabo spremenljivk ${} mora bit string deklariran z ` (AltGr + 7), njihove komande {enter} etc. delajo tudi z navadnim '
+    cy.get('#addProductMax').type(`${minTemp}`) // Za uporabo spremenljivk ${} mora bit string deklariran z ` (AltGr + 7), njihove komande {enter} etc. delajo tudi z navadnim '
     cy.get('#addProductMinInput').type(`${maxTemp}`)
     cy.get('#addProductButton').click()
     cy.get('tbody tr').children('[id^="productsTableBodyName"]').contains(product).should('exist')
@@ -27,7 +27,7 @@ describe('upravljanje izdelka', () => {
     nameCell.should('exist')
     nameCell.parent().find('[id^="productsTableBodyEdit"] button').click()
     cy.get('#editProductMinInput').type(`{backspace}{backspace}${minTempN}`)
-    cy.get('#editProductMaxInput').type(`{backspace}{backspace}${maxTempN}`)
+    cy.get('#editProductMax').type(`{backspace}{backspace}${maxTempN}`)
     cy.get('#editProductIdButton').click()
     cy.wait(2000)
     nameCell = cy.get('tbody tr').children('[id^="productsTableBodyName"]').contains(product)
