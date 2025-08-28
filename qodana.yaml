@@ -2,31 +2,13 @@
 #               Qodana analysis is configured by qodana.yaml file               #
 #             https://www.jetbrains.com/help/qodana/qodana-yaml.html            #
 #-------------------------------------------------------------------------------#
-version: "2.0"
+version: "1.0"
 
 #Specify inspection profile for code analysis
 profile:
   name: qodana.recommended
 
-#Enable inspections
-#include:
-#  - name: <SomeEnabledInspectionId>
-
-#Disable inspections
-#exclude:
-#  - name: <SomeDisabledInspectionId>
-#    paths:
-#      - <path/where/not/run/inspection>
-
-exclude:
-  - name: All
-    paths:
-      - "**/*.md"
-
 projectJDK: "21" #(Applied in CI/CD pipeline)
-
-#Execute shell command before Qodana execution (Applied in CI/CD pipeline)
-#bootstrap: sh ./prepare-qodana.sh
 
 #Install IDE plugins before Qodana execution (Applied in CI/CD pipeline)
 #plugins:
@@ -38,16 +20,16 @@ projectJDK: "21" #(Applied in CI/CD pipeline)
 # Code Coverage is available in Ultimate and Ultimate Plus plans
 failureConditions:
   severityThresholds:
-    any: 50       # Skupno število vseh problemov
+    any: 20       # Skupno število vseh problemov
     critical: 0   # Kritičnih napak ne dovolimo
-    high: 5       # Največ 5 resnih napak
-    moderate: 10  # Največ 10 srednjih
-    low: 20       # Največ 20 nizkih
-    info: 30      # Največ 30 info opozoril
+    high: 1      # Največ 1 resno napako
+    moderate: 5  # Največ 5 srednjih
+    low: 3       # Največ 3 nizkih
+    info: 10      # Največ 10 info opozoril
 
   testCoverageThresholds:
     fresh: 60     # Pokritost nove kode (%) – min 60 %
     total: 80     # Skupna pokritost projekta (%) – min 80 %
 
-#Specify Qodana linter for analysis (Applied in CI/CD pipeline)
+
 linter: jetbrains/qodana-jvm:2025.2
