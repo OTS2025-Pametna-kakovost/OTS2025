@@ -1,31 +1,53 @@
+#-------------------------------------------------------------------------------#
+#               Qodana analysis is configured by qodana.yaml file               #
+#             https://www.jetbrains.com/help/qodana/qodana-yaml.html            #
+#-------------------------------------------------------------------------------#
 version: "2.0"
 
-# Specify inspection profile for code analysis
+#Specify inspection profile for code analysis
 profile:
   name: qodana.recommended
 
-projectJDK: "21"  # (Applied in CI/CD pipeline)
+#Enable inspections
+#include:
+#  - name: <SomeEnabledInspectionId>
+
+#Disable inspections
+#exclude:
+#  - name: <SomeDisabledInspectionId>
+#    paths:
+#      - <path/where/not/run/inspection>
 
 exclude:
   - name: All
     paths:
       - "**/*.md"
 
-# Quality gate. Will fail the CI/CD pipeline if any condition is not met
-failureConditions:
-  # 2) Po resnostih (če je katerikoli presežen, job pade):
-  severityThresholds:
-    any: 0
-    critical: 0
-    high: 10
-    moderate: 50
-    low: 200
-    info: 500
-  # 3) Pokritost s testi (kjer linter podpira coverage):
-  testCoverageThresholds:
-    total: 80
-    fresh: 90
-  # -- Baseline: toleriramo stari dolg, blokiramo rast --
+projectJDK: "21" #(Applied in CI/CD pipeline)
 
-# Specify Qodana linter for analysis (Applied in CI/CD pipeline)
+#Execute shell command before Qodana execution (Applied in CI/CD pipeline)
+#bootstrap: sh ./prepare-qodana.sh
+
+#Install IDE plugins before Qodana execution (Applied in CI/CD pipeline)
+#plugins:
+#  - id: <plugin.id> #(plugin id can be found at https://plugins.jetbrains.com)
+
+# Quality gate. Will fail the CI/CD pipeline if any condition is not met
+# severityThresholds - configures maximum thresholds for different problem severities
+# testCoverageThresholds - configures minimum code coverage on a whole project and newly added code
+# Code Coverage is available in Ultimate and Ultimate Plus plans
+failureConditions:
+  severityThresholds:
+    any: 50       # Skupno število vseh problemov
+    critical: 0   # Kritičnih napak ne dovolimo
+    high: 5       # Največ 5 resnih napak
+    moderate: 10  # Največ 10 srednjih
+    low: 20       # Največ 20 nizkih
+    info: 30      # Največ 30 info opozoril
+
+  testCoverageThresholds:
+    fresh: 60     # Pokritost nove kode (%) – min 60 %
+    total: 80     # Skupna pokritost projekta (%) – min 80 %
+
+#Specify Qodana linter for analysis (Applied in CI/CD pipeline)
 linter: jetbrains/qodana-jvm:2025.2
