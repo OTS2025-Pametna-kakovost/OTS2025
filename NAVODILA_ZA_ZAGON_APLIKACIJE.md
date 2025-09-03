@@ -24,7 +24,7 @@ V novi terminalski seji zaženite Quarkus aplikacijo:
 
 ```bash
 cd backend
-./mvnw quarkus:dev
+./mvnw quarkus:dev **_ali_** ./mvnw -Dnet.bytebuddy.experimental=true quarkus:dev
 ```
 
 - Backend bo dosegljiv na [http://localhost:8280](http://localhost:8280).
