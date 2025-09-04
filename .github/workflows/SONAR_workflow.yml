@@ -1,4 +1,4 @@
-name: SonarCloud (Frontend, Backend & Monorepo)
+name: SonarCloud (Frontend & Backend)
 
 on:
   workflow_dispatch:
