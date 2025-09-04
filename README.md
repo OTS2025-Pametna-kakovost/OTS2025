@@ -132,8 +132,8 @@ npx cypress run
 
 ## CI/CD (GitHub Actions)
 V `.github/workflows/` sta primera:
-- **CI Pipeline** (`workflow.yml`): gradnja backenda (Java 20 + Maven), priprava PostgreSQL servisa, (možna) gradnja frontenda in E2E testi.
-- **PR Checkstyle** (`PR_workflow.yml`): Checkstyle lint ob PR-jih.
+- **CI Pipeline** (`workflow.yml`): gradnja backenda (Java 20 + Maven), priprava PostgreSQL baze, gradnja frontenda.
+- **PR Checkstyle** (`PR_workflow.yml`): Checkstyle lint ob PR-jih, varnostna analiza in E2E testi.
 ---
 
 ## Docker (produkcijski buildi)
