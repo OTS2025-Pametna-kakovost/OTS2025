@@ -1,31 +1,35 @@
-version: "2.0"
+#-------------------------------------------------------------------------------#
+#               Qodana analysis is configured by qodana.yaml file               #
+#             https://www.jetbrains.com/help/qodana/qodana-yaml.html            #
+#-------------------------------------------------------------------------------#
+version: "1.0"
 
-# Specify inspection profile for code analysis
+#Specify inspection profile for code analysis
 profile:
   name: qodana.recommended
 
-projectJDK: "21"  # (Applied in CI/CD pipeline)
+projectJDK: "21" #(Applied in CI/CD pipeline)
 
-exclude:
-  - name: All
-    paths:
-      - "**/*.md"
+#Install IDE plugins before Qodana execution (Applied in CI/CD pipeline)
+#plugins:
+#  - id: <plugin.id> #(plugin id can be found at https://plugins.jetbrains.com)
 
 # Quality gate. Will fail the CI/CD pipeline if any condition is not met
+# severityThresholds - configures maximum thresholds for different problem severities
+# testCoverageThresholds - configures minimum code coverage on a whole project and newly added code
+# Code Coverage is available in Ultimate and Ultimate Plus plans
 failureConditions:
-  # 2) Po resnostih (če je katerikoli presežen, job pade):
   severityThresholds:
-    any: 0
-    critical: 0
-    high: 10
-    moderate: 50
-    low: 200
-    info: 500
-  # 3) Pokritost s testi (kjer linter podpira coverage):
-  testCoverageThresholds:
-    total: 80
-    fresh: 90
-  # -- Baseline: toleriramo stari dolg, blokiramo rast --
+    any: 20       # Skupno število vseh problemov
+    critical: 0   # Kritičnih napak ne dovolimo
+    high: 1      # Največ 1 resno napako
+    moderate: 5  # Največ 5 srednjih
+    low: 3       # Največ 3 nizkih
+    info: 10      # Največ 10 info opozoril
 
-# Specify Qodana linter for analysis (Applied in CI/CD pipeline)
+  testCoverageThresholds:
+    fresh: 60     # Pokritost nove kode (%) – min 60 %
+    total: 80     # Skupna pokritost projekta (%) – min 80 %
+
+
 linter: jetbrains/qodana-jvm:2025.2
