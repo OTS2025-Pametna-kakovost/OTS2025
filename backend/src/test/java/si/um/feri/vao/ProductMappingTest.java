@@ -11,7 +11,6 @@ class ProductMappingTest {
         si.um.feri.measurements.dto.Product dto =
                 new si.um.feri.measurements.dto.Product(null, "Thermometer", 100.0, -10.0);
 
-        // Product here is the ENTITY from the same package (vao)
         Product entity = new Product(dto);
 
         assertEquals("Thermometer", entity.getName());
