@@ -127,3 +127,13 @@ npm run cypress:run    # headless način
   docker volume prune   # po želji, če so bili uporabljeni volumni
   # nato ponovno zaženite 'docker run ...'
   ```
+
+
+
+
+mvn clean verify sonar:sonar \
+-Dnet.bytebuddy.experimental=true \
+-Dsonar.projectKey=ots25 \
+-Dsonar.projectName='ots25' \
+-Dsonar.host.url=http://localhost:9001 \
+-Dsonar.token=sqp_8d779222baae6552855b6cbd33c2db0596148eee

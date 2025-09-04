@@ -1,6 +1,0 @@
-projectKey=ots-test
-serverUrl=http://localhost:9001
-serverVersion=25.8.0.112029
-dashboardUrl=http://localhost:9001/dashboard?id=ots-test
-ceTaskId=a36c8b26-6413-412a-a2e4-c1402681e2db
-ceTaskUrl=http://localhost:9001/api/ce/task?id=a36c8b26-6413-412a-a2e4-c1402681e2db
