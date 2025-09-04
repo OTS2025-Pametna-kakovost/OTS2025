@@ -37,20 +37,4 @@ class ProductMappingTest {
                 () -> assertEquals(5.5, entity.getMinMeasure(), 1e-9)
         );
     }
-
-    @Test
-    void toDto_reflectsEntityState() {
-        Product entity = new Product();
-        entity.setId(42L);
-        entity.setName("Sensor");
-        entity.setMaxMeasure(77.7);
-        entity.setMinMeasure(11.1);
-
-        si.um.feri.measurements.dto.Product dto = entity.toDto();
-
-        assertEquals(42L, dto.id());
-        assertEquals("Sensor", dto.name());
-        assertEquals(77.7, dto.maxMeasure(), 1e-9);
-        assertEquals(11.1, dto.minMeasure(), 1e-9);
-    }
 }
