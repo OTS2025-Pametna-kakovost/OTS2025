@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ✅ pomembno za SARIF upload (da je git repo)
+      # ✅ da je git repo za SARIF processing
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -38,7 +38,9 @@ jobs:
             --sarif-file-output=demo-snyk.sarif \
             --json-file-output=demo-snyk.json
 
-      # ✅ 4) Popravi SARIF: null severity -> 0.0 (da GitHub sprejme)
+      # 4) Sanitize SARIF:
+      #    - securitySeverity null -> 0.0
+      #    - keep only 1 run (GitHub ne sprejme več runs/file)
       - name: Sanitize SARIF for GitHub Code Scanning
         if: always()
         run: |
@@ -49,20 +51,23 @@ jobs:
           with open(path, "r", encoding="utf-8") as f:
             sarif = json.load(f)
 
-          # GitHub hoče numeric securitySeverity.
+          # Fix null securitySeverity
           for run in sarif.get("runs", []):
             rules = run.get("tool", {}).get("driver", {}).get("rules", [])
             for r in rules:
               props = r.get("properties", {})
-              sev = props.get("securitySeverity", None)
-              if sev is None:
+              if props.get("securitySeverity") is None:
                 props["securitySeverity"] = 0.0
                 r["properties"] = props
+
+          # Reduce SARIF to single run
+          if "runs" in sarif and isinstance(sarif["runs"], list) and len(sarif["runs"]) > 1:
+            sarif["runs"] = [sarif["runs"][0]]
 
           with open(path, "w", encoding="utf-8") as f:
             json.dump(sarif, f)
 
-          print("SARIF sanitized.")
+          print("SARIF sanitized + reduced to single run.")
           PY
 
       # 5) Summary tabela v GitHub Actions
@@ -100,12 +105,13 @@ jobs:
           ' demo-snyk.json >> $GITHUB_STEP_SUMMARY \
           || echo "_No vulnerabilities parsed._" >> $GITHUB_STEP_SUMMARY
 
-      # 6) Upload SARIF v GitHub Security (grafični seznam alertov)
+      # 6) Upload SARIF v GitHub Security (grafični list alertov)
       - name: Upload SARIF to GitHub Security (DEMO)
         if: always()
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: demo-snyk.sarif
+          category: snyk-demo-juice-shop
 
       # 7) Artefakti za download
       - name: Upload DEMO reports as artifact
