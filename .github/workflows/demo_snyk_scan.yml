@@ -1,4 +1,4 @@
-name: DEMO - Snyk scan vulnerable image (diagnostic)
+name: DEMO - Snyk container scan vulnerable image (CLI)
 
 on:
   workflow_dispatch: {}
@@ -15,28 +15,27 @@ jobs:
       - name: Pull intentionally vulnerable demo image
         run: docker pull bkimminich/juice-shop:latest
 
-      - name: Snyk container test (generate SARIF + JSON)
-        continue-on-error: true
-        uses: snyk/actions/docker@master
+      # 1) Install Snyk CLI
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
+      # 2) Auth Snyk
+      - name: Snyk auth
+        run: snyk auth $SNYK_TOKEN
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          command: test
-          image: bkimminich/juice-shop:latest
-          args: >
-            --severity-threshold=low
-            --sarif
-            --sarif-file-output=snyk.sarif
-            --json-file-output=snyk.json
 
-      - name: Rename outputs to demo-*
-        if: always()
+      # 3) Snyk CONTAINER test -> SARIF + JSON (ne ustavi pipeline)
+      - name: Snyk container test (generate SARIF + JSON)
+        continue-on-error: true
         run: |
-          if [ -f snyk.sarif ]; then mv snyk.sarif demo-snyk.sarif; fi
-          if [ -f snyk.json ]; then mv snyk.json demo-snyk.json; fi
-          ls -lah demo-snyk.* || true
+          snyk container test bkimminich/juice-shop:latest \
+            --severity-threshold=low \
+            --sarif-file-output=demo-snyk.sarif \
+            --json-file-output=demo-snyk.json
 
-      - name: Create Snyk DEMO summary (diagnostic + robust counts)
+      # 4) Summary tabela v GitHub Actions
+      - name: Create Snyk DEMO summary table
         if: always()
         continue-on-error: true
         run: |
@@ -46,42 +45,11 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y jq
 
-          echo "### 1) Scan status check" >> $GITHUB_STEP_SUMMARY
-          # če je v json error ali ok=false, to izpišemo
-          OK_FIELD=$(jq -r '.ok // empty' demo-snyk.json 2>/dev/null || true)
-          ERR_FIELD=$(jq -r '.error // empty' demo-snyk.json 2>/dev/null || true)
-          MESSAGE_FIELD=$(jq -r '.message // empty' demo-snyk.json 2>/dev/null || true)
+          CRITICAL=$(jq '[ (.vulnerabilities // [])[] | select(.severity=="critical") ] | length' demo-snyk.json)
+          HIGH=$(jq '[ (.vulnerabilities // [])[] | select(.severity=="high") ] | length' demo-snyk.json)
+          MEDIUM=$(jq '[ (.vulnerabilities // [])[] | select(.severity=="medium") ] | length' demo-snyk.json)
+          LOW=$(jq '[ (.vulnerabilities // [])[] | select(.severity=="low") ] | length' demo-snyk.json)
 
-          if [ "$OK_FIELD" = "false" ] || [ -n "$ERR_FIELD" ] || [ -n "$MESSAGE_FIELD" ]; then
-            echo "- ⚠️ Snyk JSON contains an error or ok=false." >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "```json" >> $GITHUB_STEP_SUMMARY
-            jq 'del(.vulnerabilities) | .error?, .message?, .ok?' demo-snyk.json >> $GITHUB_STEP_SUMMARY || true
-            echo "```" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "- ✅ Scan looks successful (no error fields found)." >> $GITHUB_STEP_SUMMARY
-          fi
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 2) Robust vulnerability extraction" >> $GITHUB_STEP_SUMMARY
-
-          # zberemo ranljivosti iz VSEH možnih struktur
-          ALL_VULNS=$(jq -c '
-            [
-              (.vulnerabilities // []),
-              (.results // [] | map(.vulnerabilities // []) | add),
-              (.runs // [] | map(.results // []) | add)
-            ]
-            | add
-            | flatten
-          ' demo-snyk.json 2>/dev/null || echo "[]")
-
-          CRITICAL=$(echo "$ALL_VULNS" | jq '[.[] | select(.severity=="critical")] | length')
-          HIGH=$(echo "$ALL_VULNS" | jq '[.[] | select(.severity=="high")] | length')
-          MEDIUM=$(echo "$ALL_VULNS" | jq '[.[] | select(.severity=="medium")] | length')
-          LOW=$(echo "$ALL_VULNS" | jq '[.[] | select(.severity=="low")] | length')
-
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---:|" >> $GITHUB_STEP_SUMMARY
           echo "| Critical | $CRITICAL |" >> $GITHUB_STEP_SUMMARY
@@ -90,19 +58,25 @@ jobs:
           echo "| Low | $LOW |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          echo "### 3) Top issues (first 5)" >> $GITHUB_STEP_SUMMARY
-          echo "$ALL_VULNS" | jq -r '
-            sort_by(.severity) | reverse | .[0:5] | .[]
-            | "- **\(.title // .id // "issue")** (\(.severity)) in `\(.packageName // .name // "package")`"
-          ' >> $GITHUB_STEP_SUMMARY \
+          echo "### Top issues (first 5)" >> $GITHUB_STEP_SUMMARY
+          jq -r '
+            (.vulnerabilities // [])
+            | sort_by(.severity)
+            | reverse
+            | .[0:5]
+            | .[]
+            | "- **\(.title)** (\(.severity)) in `\(.packageName)`"
+          ' demo-snyk.json >> $GITHUB_STEP_SUMMARY \
           || echo "_No vulnerabilities parsed._" >> $GITHUB_STEP_SUMMARY
 
+      # 5) Upload SARIF v GitHub Security
       - name: Upload SARIF to GitHub Security (DEMO)
         if: always()
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: demo-snyk.sarif
 
+      # 6) Artefakti za download
       - name: Upload DEMO reports as artifact
         if: always()
         uses: actions/upload-artifact@v4
