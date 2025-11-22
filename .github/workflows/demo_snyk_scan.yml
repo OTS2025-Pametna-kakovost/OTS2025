@@ -7,15 +7,16 @@ permissions:
   contents: read
 
 jobs:
-  demo-scan-juice-shop:
+  demo-scan-nginx-old:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ✅ 0) Pull old nginx Alpine image (known to have many vulns)
       - name: Pull intentionally vulnerable demo image
-        run: docker pull bkimminich/juice-shop:latest
+        run: docker pull nginx:1.19.6-alpine
 
       # 1) Install Snyk CLI
       - name: Install Snyk CLI
@@ -28,11 +29,10 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       # 3) Container test -> JSON + SARIF (NE ustavi pipeline)
-      # SARIF samo shranimo kot artefakt (ne uploadamo v GitHub Security)
       - name: Snyk container test (generate JSON + SARIF)
         continue-on-error: true
         run: |
-          snyk container test bkimminich/juice-shop:latest \
+          snyk container test nginx:1.19.6-alpine \
             --severity-threshold=low \
             --sarif-file-output=demo-snyk.sarif \
             --json-file-output=demo-snyk.json
@@ -42,7 +42,7 @@ jobs:
         if: always()
         continue-on-error: true
         run: |
-          echo "## Snyk DEMO Scan Summary (OWASP Juice Shop)" >> $GITHUB_STEP_SUMMARY
+          echo "## Snyk DEMO Scan Summary (nginx:1.19.6-alpine)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           sudo apt-get update -y
@@ -77,7 +77,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: demo-juice-shop-snyk-report
+          name: demo-nginx-1.19.6-alpine-snyk-report
           path: |
             demo-snyk.sarif
             demo-snyk.json
