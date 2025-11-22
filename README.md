@@ -1,6 +1,8 @@
-# OTS2025 — Pametna kakovost: od kode do produkcije (AI, SonarQube, pragovi kakovosti)
+# Zagotavljanje kakovosti v sklopu razvoja informacijskih rešitev (24. in 25. 11. 2025)
 
-Ta repozitorij je pripravljena **učna aplikacija** za delavnico OTS 2025. Cilj je prikazati pot **od kode do produkcije** s poudarkom na **pragovih kakovosti** in avtomatizaciji.
+# ====================================================================================
+
+Ta repozitorij je pripravljena **učna aplikacija** za delavnico "Zagotavljanje kakovosti v sklopu razvoja informacijskih rešitev". Cilj je prikazati pot **od kode do produkcije** s poudarkom na **pragovih kakovosti** in avtomatizaciji.
 
 ---
 
@@ -25,7 +27,7 @@ Gre za enostaven sistem za **nadzor temperaturnih meritev proizvodov** (npr. ži
 
 ## Struktura
 ```
-OTS2025-main/
+measurements-main/
   ├─ backend/                     # Quarkus (Maven)
   │  ├─ src/main/java/si/um/feri/measurements/
   │  │   ├─ rest/                 # REST kontrolerji (products, history, measurements)
