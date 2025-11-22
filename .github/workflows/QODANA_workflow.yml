@@ -23,8 +23,9 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
-      - name: Qodana Scan + Quality Gate (Community JVM)
+      - name: Qodana Scan
         uses: JetBrains/qodana-action@v2025.2
         with:
-          pr-mode: false
-          args: "--image=jetbrains/qodana-jvm-community:2025.2 --fail-threshold=2"
+          args: --fail-threshold,2
+        env:
+          QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
