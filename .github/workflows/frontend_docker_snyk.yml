@@ -23,7 +23,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 1) Build Docker image for frontend (uses frontend/Dockerfile)
+      # 1) Build Docker image for frontend
       - name: Docker build frontend image
         run: |
           docker build \
@@ -31,39 +31,51 @@ jobs:
             -f frontend/Dockerfile \
             ./frontend
 
-      # 2) Snyk container test -> SARIF + JSON (NE ustavi pipeline)
-      - name: Snyk container scan (create reports)
-        continue-on-error: true
-        uses: snyk/actions/docker@master
+      # 2) Install Snyk CLI
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
+      # 3) Auth Snyk
+      - name: Snyk auth
+        run: snyk auth $SNYK_TOKEN
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          command: test
-          image: ots2025-frontend:${{ github.sha }}
-          args: >
-            --file=frontend/Dockerfile
-            --severity-threshold=high
-            --sarif-file-output=frontend-snyk.sarif
-            --json-file-output=frontend-snyk.json
 
-      # 2b) Snyk monitor -> pošlje rezultate v Snyk Dashboard (grafično)
+      # 4) Snyk container test -> JSON + SARIF (NE ustavi pipeline)
+      - name: Snyk container test (generate reports)
+        continue-on-error: true
+        run: |
+          snyk container test ots2025-frontend:${{ github.sha }} \
+            --file=frontend/Dockerfile \
+            --severity-threshold=high \
+            --sarif-file-output=frontend-snyk.sarif \
+            --json-file-output=frontend-snyk.json || true
+
+      # 4b) Snyk monitor -> pošlje rezultate v Snyk Dashboard (grafično)
       - name: Snyk monitor (send results to Snyk Dashboard)
         continue-on-error: true
-        uses: snyk/actions/docker@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          command: monitor
-          image: ots2025-frontend:${{ github.sha }}
-          args: >
-            --file=frontend/Dockerfile
-            --project-name=ots2025-frontend
+        run: |
+          snyk container monitor ots2025-frontend:${{ github.sha }} \
+            --file=frontend/Dockerfile \
+            --project-name=ots2025-frontend || true
 
-      # 2c) Povzetek kot tabela v GitHub Actions Summary
+      # 4c) Debug: preveri, da so fajli res nastali
+      - name: List snyk outputs (debug)
+        if: always()
+        run: ls -lah frontend-snyk.* || true
+
+      # 5) Povzetek kot tabela v GitHub Actions Summary
       - name: Create Snyk summary table
         if: always()
         continue-on-error: true
         run: |
+          if [ ! -f frontend-snyk.json ]; then
+            echo "## Snyk Container Scan Summary (frontend)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "_No JSON report generated._" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
           echo "## Snyk Container Scan Summary (frontend)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
@@ -90,15 +102,20 @@ jobs:
             | reverse
             | .[0:5]
             | .[]
-            | "- **\(.title)** (\(.severity)) in `\(.packageName)` \n  - Fix: \(.fixedIn[0] // "No fix")"
+            | "- **\(.title)** (\(.severity)) in `\(.packageName)`"
           ' frontend-snyk.json >> $GITHUB_STEP_SUMMARY \
           || echo "_No vulnerabilities parsed._" >> $GITHUB_STEP_SUMMARY
 
-      # 3) SARIF GitHub-safe (odstranimo securitySeverity + 1 run)
+      # 6) SARIF GitHub-safe (odstrani securitySeverity + 1 run)
       - name: Make SARIF GitHub-safe
         if: always()
         continue-on-error: true
         run: |
+          if [ ! -f frontend-snyk.sarif ]; then
+            echo "No SARIF to sanitize."
+            exit 0
+          fi
+
           python3 - <<'PY'
           import json
 
@@ -106,7 +123,6 @@ jobs:
           with open(path, "r", encoding="utf-8") as f:
             sarif = json.load(f)
 
-          # odstrani vse securitySeverity (GitHub včasih jamra nad null)
           def drop_security_severity(obj):
             if isinstance(obj, dict):
               obj.pop("securitySeverity", None)
@@ -118,7 +134,6 @@ jobs:
 
           drop_security_severity(sarif)
 
-          # GitHub ne dovoli več runs v isti SARIF datoteki
           if isinstance(sarif.get("runs"), list) and len(sarif["runs"]) > 1:
             sarif["runs"] = [sarif["runs"][0]]
 
@@ -128,8 +143,19 @@ jobs:
           print("Frontend SARIF cleaned for GitHub.")
           PY
 
-      # 4) Upload SARIF -> GitHub Security (Code scanning alerts)
+      # 7) Upload SARIF -> GitHub Security (če obstaja)
       - name: Upload SARIF to GitHub Security
+        if: always()
+        continue-on-error: true
+        run: |
+          if [ -f frontend-snyk.sarif ]; then
+            echo "SARIF exists, uploading..."
+          else
+            echo "No SARIF generated, skipping upload."
+            exit 0
+          fi
+        # dejanski upload kot ločen korak, da if-check dela
+      - name: Upload SARIF (action)
         if: always()
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@v4
@@ -137,9 +163,10 @@ jobs:
           sarif_file: frontend-snyk.sarif
           category: snyk-frontend
 
-      # 5) Artefakti
+      # 8) Artefakti (če obstajajo)
       - name: Upload Snyk reports as artifact
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: snyk-frontend-container-report
