@@ -34,11 +34,12 @@ jobs:
         run: |
           if [ -f snyk.sarif ]; then mv snyk.sarif demo-snyk.sarif; fi
           if [ -f snyk.json ]; then mv snyk.json demo-snyk.json; fi
-          ls -lah demo-snyk.*
+          echo "Files after rename:"
+          ls -lah demo-snyk.* || true
 
-      # ⭐ TO JE NOVO: tabela v Actions Summary
       - name: Create Snyk DEMO summary table
         if: always()
+        continue-on-error: true
         run: |
           echo "## Snyk DEMO Scan Summary (debian:stretch)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -46,10 +47,11 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y jq
 
-          CRITICAL=$(jq '[.vulnerabilities[] | select(.severity=="critical")] | length' demo-snyk.json)
-          HIGH=$(jq '[.vulnerabilities[] | select(.severity=="high")] | length' demo-snyk.json)
-          MEDIUM=$(jq '[.vulnerabilities[] | select(.severity=="medium")] | length' demo-snyk.json)
-          LOW=$(jq '[.vulnerabilities[] | select(.severity=="low")] | length' demo-snyk.json)
+          # robustno: če vulnerabilities ne obstaja ali je null -> []
+          CRITICAL=$(jq '[ (.vulnerabilities // [])[] | select(.severity=="critical") ] | length' demo-snyk.json)
+          HIGH=$(jq '[ (.vulnerabilities // [])[] | select(.severity=="high") ] | length' demo-snyk.json)
+          MEDIUM=$(jq '[ (.vulnerabilities // [])[] | select(.severity=="medium") ] | length' demo-snyk.json)
+          LOW=$(jq '[ (.vulnerabilities // [])[] | select(.severity=="low") ] | length' demo-snyk.json)
 
           echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---:|" >> $GITHUB_STEP_SUMMARY
@@ -61,13 +63,14 @@ jobs:
 
           echo "### Top issues (first 5)" >> $GITHUB_STEP_SUMMARY
           jq -r '
-            .vulnerabilities
+            (.vulnerabilities // [])
             | sort_by(.severity)
             | reverse
             | .[0:5]
             | .[]
             | "- **\(.title)** (\(.severity)) in `\(.packageName)` \n  - Fix: \(.fixedIn[0] // "No fix")"
-          ' demo-snyk.json >> $GITHUB_STEP_SUMMARY
+          ' demo-snyk.json >> $GITHUB_STEP_SUMMARY \
+          || echo "_No vulnerabilities found or JSON schema differs._" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload SARIF to GitHub Security (DEMO)
         if: always()
