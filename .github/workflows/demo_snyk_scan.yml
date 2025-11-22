@@ -1,11 +1,11 @@
 name: DEMO - Snyk scan intentionally vulnerable image
 
 on:
-  workflow_dispatch: {}   # ročni zagon iz GitHub UI
+  workflow_dispatch: {}
 
 permissions:
   contents: read
-  security-events: write  # da lahko naloži SARIF v GitHub Security
+  security-events: write
 
 jobs:
   demo-scan-debian-stretch:
@@ -15,21 +15,26 @@ jobs:
       - name: Pull demo image (old Debian)
         run: docker pull debian:stretch
 
-      - name: Snyk container scan (create reports) - DEMO
+      - name: Snyk container test (generate SARIF + JSON)
         continue-on-error: true
         uses: snyk/actions/docker@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
+          command: test          # 🔥 KLJUČNO!
           image: debian:stretch
           args: >
             --severity-threshold=medium
             --sarif-file-output=demo-snyk.sarif
             --json-file-output=demo-snyk.json
 
-      - name: Upload SARIF to GitHub Security (DEMO)
+      - name: List output files (debug)
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        run: ls -lah .
+
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4   # 🔥 posodobljeno
         with:
           sarif_file: demo-snyk.sarif
 
