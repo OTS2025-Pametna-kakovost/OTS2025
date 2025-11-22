@@ -1,7 +1,7 @@
 name: Backend Docker build + Snyk report
 
 on:
-  workflow_dispatch: {}   # ✅ ročni zagon iz GitHub UI
+  workflow_dispatch: {}
   push:
     branches: [ "main" ]
     paths:
@@ -13,7 +13,7 @@ on:
 
 permissions:
   contents: read
-  security-events: write   # potrebno za upload SARIF
+  security-events: write
 
 jobs:
   docker-build-and-scan:
@@ -29,12 +29,12 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      # 1) build Quarkus backend (da nastane target/quarkus-app)
+      # 1) build Quarkus backend
       - name: Build backend (maven)
         working-directory: backend
         run: ./mvnw -B clean package
 
-      # 2) build Docker image (uporabi isti Dockerfile kot tvoj prod pipeline)
+      # 2) build Docker image
       - name: Docker build backend image
         run: |
           docker build \
@@ -42,7 +42,7 @@ jobs:
             -f backend/src/main/docker/Dockerfile.jvm \
             ./backend
 
-      # 3) Snyk scan -> naredi SARIF + JSON report, ampak NE ustavi pipeline
+      # 3) Snyk scan -> SARIF + JSON, NE ustavi pipeline
       - name: Snyk container scan (create reports)
         continue-on-error: true
         uses: snyk/actions/docker@master
@@ -55,14 +55,60 @@ jobs:
             --sarif-file-output=snyk.sarif
             --json-file-output=snyk.json
 
-      # 4) Upload SARIF -> pokaže se v GitHub Security (Code scanning)
+      # 3b) Snyk monitor -> pošlje rezultate v Snyk Dashboard (grafično)
+      - name: Snyk monitor (send results to Snyk Dashboard)
+        continue-on-error: true
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: monitor
+          image: ots2025-backend:${{ github.sha }}
+          args: >
+            --project-name=ots2025-backend
+
+      # 3c) Naredi povzetek kot tabelo v GitHub Actions Summary
+      - name: Create Snyk summary table
+        if: always()
+        run: |
+          echo "## Snyk Container Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # namesti jq za parsing json
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+
+          CRITICAL=$(jq '[.vulnerabilities[] | select(.severity=="critical")] | length' snyk.json)
+          HIGH=$(jq '[.vulnerabilities[] | select(.severity=="high")] | length' snyk.json)
+          MEDIUM=$(jq '[.vulnerabilities[] | select(.severity=="medium")] | length' snyk.json)
+          LOW=$(jq '[.vulnerabilities[] | select(.severity=="low")] | length' snyk.json)
+
+          echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---:|" >> $GITHUB_STEP_SUMMARY
+          echo "| Critical | $CRITICAL |" >> $GITHUB_STEP_SUMMARY
+          echo "| High | $HIGH |" >> $GITHUB_STEP_SUMMARY
+          echo "| Medium | $MEDIUM |" >> $GITHUB_STEP_SUMMARY
+          echo "| Low | $LOW |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### Top issues (first 5)" >> $GITHUB_STEP_SUMMARY
+          jq -r '
+            .vulnerabilities
+            | sort_by(.severity)
+            | reverse
+            | .[0:5]
+            | .[]
+            | "- **\(.title)** (\(.severity)) in `\(.packageName)` \n  - Fix: \(.fixedIn[0] // "No fix")"
+          ' snyk.json >> $GITHUB_STEP_SUMMARY
+
+      # 4) Upload SARIF -> GitHub Security (Code scanning alerts)
       - name: Upload SARIF to GitHub Security
         if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk.sarif
 
-      # 5) Shranimo report kot artefakt (da ga udeleženci odprejo)
+      # 5) Artefakti
       - name: Upload Snyk reports as artifact
         if: always()
         uses: actions/upload-artifact@v4
