@@ -23,7 +23,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 1) build Docker image for frontend (uses frontend/Dockerfile)
+      # 1) Build Docker image for frontend (uses frontend/Dockerfile)
       - name: Docker build frontend image
         run: |
           docker build \
@@ -31,20 +31,22 @@ jobs:
             -f frontend/Dockerfile \
             ./frontend
 
-      # 2) Snyk scan -> SARIF + JSON, NE ustavi pipeline
+      # 2) Snyk container test -> SARIF + JSON (NE ustavi pipeline)
       - name: Snyk container scan (create reports)
         continue-on-error: true
         uses: snyk/actions/docker@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
+          command: test
           image: ots2025-frontend:${{ github.sha }}
           args: >
+            --file=frontend/Dockerfile
             --severity-threshold=high
-            --sarif-file-output=snyk.sarif
-            --json-file-output=snyk.json
+            --sarif-file-output=frontend-snyk.sarif
+            --json-file-output=frontend-snyk.json
 
-      # 2b) Snyk monitor -> pošlje rezultate v Snyk Dashboard
+      # 2b) Snyk monitor -> pošlje rezultate v Snyk Dashboard (grafično)
       - name: Snyk monitor (send results to Snyk Dashboard)
         continue-on-error: true
         uses: snyk/actions/docker@master
@@ -54,11 +56,13 @@ jobs:
           command: monitor
           image: ots2025-frontend:${{ github.sha }}
           args: >
+            --file=frontend/Dockerfile
             --project-name=ots2025-frontend
 
       # 2c) Povzetek kot tabela v GitHub Actions Summary
       - name: Create Snyk summary table
         if: always()
+        continue-on-error: true
         run: |
           echo "## Snyk Container Scan Summary (frontend)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -66,10 +70,10 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y jq
 
-          CRITICAL=$(jq '[.vulnerabilities[] | select(.severity=="critical")] | length' snyk.json)
-          HIGH=$(jq '[.vulnerabilities[] | select(.severity=="high")] | length' snyk.json)
-          MEDIUM=$(jq '[.vulnerabilities[] | select(.severity=="medium")] | length' snyk.json)
-          LOW=$(jq '[.vulnerabilities[] | select(.severity=="low")] | length' snyk.json)
+          CRITICAL=$(jq '[ (.vulnerabilities // [])[] | select(.severity=="critical") ] | length' frontend-snyk.json)
+          HIGH=$(jq '[ (.vulnerabilities // [])[] | select(.severity=="high") ] | length' frontend-snyk.json)
+          MEDIUM=$(jq '[ (.vulnerabilities // [])[] | select(.severity=="medium") ] | length' frontend-snyk.json)
+          LOW=$(jq '[ (.vulnerabilities // [])[] | select(.severity=="low") ] | length' frontend-snyk.json)
 
           echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---:|" >> $GITHUB_STEP_SUMMARY
@@ -81,27 +85,64 @@ jobs:
 
           echo "### Top issues (first 5)" >> $GITHUB_STEP_SUMMARY
           jq -r '
-            .vulnerabilities
+            (.vulnerabilities // [])
             | sort_by(.severity)
             | reverse
             | .[0:5]
             | .[]
             | "- **\(.title)** (\(.severity)) in `\(.packageName)` \n  - Fix: \(.fixedIn[0] // "No fix")"
-          ' snyk.json >> $GITHUB_STEP_SUMMARY
+          ' frontend-snyk.json >> $GITHUB_STEP_SUMMARY \
+          || echo "_No vulnerabilities parsed._" >> $GITHUB_STEP_SUMMARY
 
-      # 3) Upload SARIF -> GitHub Security (Code scanning alerts)
+      # 3) SARIF GitHub-safe (odstranimo securitySeverity + 1 run)
+      - name: Make SARIF GitHub-safe
+        if: always()
+        continue-on-error: true
+        run: |
+          python3 - <<'PY'
+          import json
+
+          path = "frontend-snyk.sarif"
+          with open(path, "r", encoding="utf-8") as f:
+            sarif = json.load(f)
+
+          # odstrani vse securitySeverity (GitHub včasih jamra nad null)
+          def drop_security_severity(obj):
+            if isinstance(obj, dict):
+              obj.pop("securitySeverity", None)
+              for v in obj.values():
+                drop_security_severity(v)
+            elif isinstance(obj, list):
+              for item in obj:
+                drop_security_severity(item)
+
+          drop_security_severity(sarif)
+
+          # GitHub ne dovoli več runs v isti SARIF datoteki
+          if isinstance(sarif.get("runs"), list) and len(sarif["runs"]) > 1:
+            sarif["runs"] = [sarif["runs"][0]]
+
+          with open(path, "w", encoding="utf-8") as f:
+            json.dump(sarif, f)
+
+          print("Frontend SARIF cleaned for GitHub.")
+          PY
+
+      # 4) Upload SARIF -> GitHub Security (Code scanning alerts)
       - name: Upload SARIF to GitHub Security
         if: always()
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: snyk.sarif
+          sarif_file: frontend-snyk.sarif
+          category: snyk-frontend
 
-      # 4) Artefakti
+      # 5) Artefakti
       - name: Upload Snyk reports as artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: snyk-frontend-container-report
           path: |
-            snyk.sarif
-            snyk.json
+            frontend-snyk.sarif
+            frontend-snyk.json
