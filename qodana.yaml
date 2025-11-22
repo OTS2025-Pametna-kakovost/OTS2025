@@ -31,5 +31,3 @@ failureConditions:
     fresh: 60     # Pokritost nove kode (%) – min 60 %
     total: 80     # Skupna pokritost projekta (%) – min 80 %
 
-
-linter: jetbrains/qodana-jvm:2025.2
