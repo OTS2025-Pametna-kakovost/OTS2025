@@ -23,9 +23,10 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
-      - name: Qodana Scan + Quality Gate
+      - name: Qodana Scan + Quality Gate (Community JVM)
         uses: JetBrains/qodana-action@v2025.2
         with:
           pr-mode: false
-          image: jetbrains/qodana-jvm-community:2025.2  # ✅ community linter, brez licence
-          args: --fail-threshold,2  # opcijsko; gate je primarno v qodana.yaml
+          args: >
+            --image,jetbrains/qodana-jvm-community:2025.2
+            --fail-threshold,2
