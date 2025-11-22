@@ -1,3 +1,4 @@
+
 name: DEMO - Snyk scan intentionally vulnerable image
 
 on:
@@ -15,29 +16,48 @@ jobs:
       - name: Pull demo image (old Debian)
         run: docker pull debian:stretch
 
+      # Sken + generiranje SARIF/JSON (NE faila)
       - name: Snyk container test (generate SARIF + JSON)
         continue-on-error: true
         uses: snyk/actions/docker@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          command: test          # 🔥 KLJUČNO!
+          command: test
           image: debian:stretch
           args: >
             --severity-threshold=medium
-            --sarif-file-output=demo-snyk.sarif
-            --json-file-output=demo-snyk.json
+            --sarif
+            --sarif-file-output=snyk.sarif
+            --json-file-output=snyk.json
 
-      - name: List output files (debug)
+      # Debug + preimenovanje (če je treba)
+      - name: Ensure demo SARIF exists
         if: always()
-        run: ls -lah .
+        run: |
+          echo "Listing SARIF/JSON files:"
+          find . -maxdepth 2 -type f \( -name "*.sarif" -o -name "*.json" \) -print
 
-      - name: Upload SARIF to GitHub Security
+          # če je SARIF pod privzetim imenom, ga preimenujemo
+          if [ -f snyk.sarif ]; then
+            mv snyk.sarif demo-snyk.sarif
+          fi
+
+          if [ -f snyk.json ]; then
+            mv snyk.json demo-snyk.json
+          fi
+
+          echo "After rename:"
+          ls -lah demo-snyk.sarif demo-snyk.json
+
+      # Upload SARIF -> GitHub Security
+      - name: Upload SARIF to GitHub Security (DEMO)
         if: always()
-        uses: github/codeql-action/upload-sarif@v4   # 🔥 posodobljeno
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: demo-snyk.sarif
 
+      # Artefakti
       - name: Upload DEMO reports as artifact
         if: always()
         uses: actions/upload-artifact@v4
