@@ -1,0 +1,73 @@
+name: Backend Docker build + Snyk report
+
+on:
+  workflow_dispatch: {}   # ✅ ročni zagon iz GitHub UI
+  push:
+    branches: [ "main" ]
+    paths:
+      - "backend/**"
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - "backend/**"
+
+permissions:
+  contents: read
+  security-events: write   # potrebno za upload SARIF
+
+jobs:
+  docker-build-and-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      # 1) build Quarkus backend (da nastane target/quarkus-app)
+      - name: Build backend (maven)
+        working-directory: backend
+        run: ./mvnw -B clean package
+
+      # 2) build Docker image (uporabi isti Dockerfile kot tvoj prod pipeline)
+      - name: Docker build backend image
+        run: |
+          docker build \
+            -t ots2025-backend:${{ github.sha }} \
+            -f backend/src/main/docker/Dockerfile.jvm \
+            ./backend
+
+      # 3) Snyk scan -> naredi SARIF + JSON report, ampak NE ustavi pipeline
+      - name: Snyk container scan (create reports)
+        continue-on-error: true
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: ots2025-backend:${{ github.sha }}
+          args: >
+            --severity-threshold=high
+            --sarif-file-output=snyk.sarif
+            --json-file-output=snyk.json
+
+      # 4) Upload SARIF -> pokaže se v GitHub Security (Code scanning)
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk.sarif
+
+      # 5) Shranimo report kot artefakt (da ga udeleženci odprejo)
+      - name: Upload Snyk reports as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-container-report
+          path: |
+            snyk.sarif
+            snyk.json
