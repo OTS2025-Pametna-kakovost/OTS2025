@@ -1,4 +1,4 @@
-name: DEMO - Snyk scan intentionally vulnerable image
+name: DEMO - Snyk scan vulnerable image (OWASP Juice Shop)
 
 on:
   workflow_dispatch: {}
@@ -8,12 +8,12 @@ permissions:
   security-events: write
 
 jobs:
-  demo-scan-debian-stretch:
+  demo-scan-juice-shop:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Pull demo image (old Debian)
-        run: docker pull debian:stretch
+      - name: Pull intentionally vulnerable demo image
+        run: docker pull bkimminich/juice-shop:latest
 
       - name: Snyk container test (generate SARIF + JSON)
         continue-on-error: true
@@ -22,9 +22,9 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           command: test
-          image: debian:stretch
+          image: bkimminich/juice-shop:latest
           args: >
-            --severity-threshold=medium
+            --severity-threshold=low
             --sarif
             --sarif-file-output=snyk.sarif
             --json-file-output=snyk.json
@@ -34,20 +34,18 @@ jobs:
         run: |
           if [ -f snyk.sarif ]; then mv snyk.sarif demo-snyk.sarif; fi
           if [ -f snyk.json ]; then mv snyk.json demo-snyk.json; fi
-          echo "Files after rename:"
           ls -lah demo-snyk.* || true
 
       - name: Create Snyk DEMO summary table
         if: always()
         continue-on-error: true
         run: |
-          echo "## Snyk DEMO Scan Summary (debian:stretch)" >> $GITHUB_STEP_SUMMARY
+          echo "## Snyk DEMO Scan Summary (OWASP Juice Shop)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           sudo apt-get update -y
           sudo apt-get install -y jq
 
-          # robustno: če vulnerabilities ne obstaja ali je null -> []
           CRITICAL=$(jq '[ (.vulnerabilities // [])[] | select(.severity=="critical") ] | length' demo-snyk.json)
           HIGH=$(jq '[ (.vulnerabilities // [])[] | select(.severity=="high") ] | length' demo-snyk.json)
           MEDIUM=$(jq '[ (.vulnerabilities // [])[] | select(.severity=="medium") ] | length' demo-snyk.json)
@@ -82,7 +80,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: demo-debian-stretch-snyk-report
+          name: demo-juice-shop-snyk-report
           path: |
             demo-snyk.sarif
             demo-snyk.json
