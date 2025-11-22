@@ -1,0 +1,107 @@
+name: Frontend Docker build + Snyk report
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [ "main" ]
+    paths:
+      - "frontend/**"
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - "frontend/**"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  docker-build-and-scan-frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 1) build Docker image for frontend (uses frontend/Dockerfile)
+      - name: Docker build frontend image
+        run: |
+          docker build \
+            -t ots2025-frontend:${{ github.sha }} \
+            -f frontend/Dockerfile \
+            ./frontend
+
+      # 2) Snyk scan -> SARIF + JSON, NE ustavi pipeline
+      - name: Snyk container scan (create reports)
+        continue-on-error: true
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: ots2025-frontend:${{ github.sha }}
+          args: >
+            --severity-threshold=high
+            --sarif-file-output=snyk.sarif
+            --json-file-output=snyk.json
+
+      # 2b) Snyk monitor -> pošlje rezultate v Snyk Dashboard
+      - name: Snyk monitor (send results to Snyk Dashboard)
+        continue-on-error: true
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: monitor
+          image: ots2025-frontend:${{ github.sha }}
+          args: >
+            --project-name=ots2025-frontend
+
+      # 2c) Povzetek kot tabela v GitHub Actions Summary
+      - name: Create Snyk summary table
+        if: always()
+        run: |
+          echo "## Snyk Container Scan Summary (frontend)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+
+          CRITICAL=$(jq '[.vulnerabilities[] | select(.severity=="critical")] | length' snyk.json)
+          HIGH=$(jq '[.vulnerabilities[] | select(.severity=="high")] | length' snyk.json)
+          MEDIUM=$(jq '[.vulnerabilities[] | select(.severity=="medium")] | length' snyk.json)
+          LOW=$(jq '[.vulnerabilities[] | select(.severity=="low")] | length' snyk.json)
+
+          echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---:|" >> $GITHUB_STEP_SUMMARY
+          echo "| Critical | $CRITICAL |" >> $GITHUB_STEP_SUMMARY
+          echo "| High | $HIGH |" >> $GITHUB_STEP_SUMMARY
+          echo "| Medium | $MEDIUM |" >> $GITHUB_STEP_SUMMARY
+          echo "| Low | $LOW |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### Top issues (first 5)" >> $GITHUB_STEP_SUMMARY
+          jq -r '
+            .vulnerabilities
+            | sort_by(.severity)
+            | reverse
+            | .[0:5]
+            | .[]
+            | "- **\(.title)** (\(.severity)) in `\(.packageName)` \n  - Fix: \(.fixedIn[0] // "No fix")"
+          ' snyk.json >> $GITHUB_STEP_SUMMARY
+
+      # 3) Upload SARIF -> GitHub Security (Code scanning alerts)
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: snyk.sarif
+
+      # 4) Artefakti
+      - name: Upload Snyk reports as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-frontend-container-report
+          path: |
+            snyk.sarif
+            snyk.json
