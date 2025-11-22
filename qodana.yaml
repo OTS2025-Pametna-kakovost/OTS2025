@@ -20,11 +20,11 @@ projectJDK: "21" #(Applied in CI/CD pipeline)
 # Code Coverage is available in Ultimate and Ultimate Plus plans
 failureConditions:
   severityThresholds:
-    any: 20       # Skupno število vseh problemov
+    any: 2       # Skupno število vseh problemov
     critical: 0   # Kritičnih napak ne dovolimo
     high: 1      # Največ 1 resno napako
-    moderate: 5  # Največ 5 srednjih
-    low: 3       # Največ 3 nizkih
+    moderate: 1  # Največ 5 srednjih
+    low: 2       # Največ 3 nizkih
     info: 10      # Največ 10 info opozoril
 
   testCoverageThresholds:
