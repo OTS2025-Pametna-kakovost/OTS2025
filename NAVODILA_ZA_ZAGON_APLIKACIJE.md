@@ -128,12 +128,14 @@ npm run cypress:run    # headless način
   # nato ponovno zaženite 'docker run ...'
   ```
 
+---
+## 📊 SonarQube analiza kode ukaz za MacOS/Linux terminal:
 
-
-
-mvn clean verify sonar:sonar \
--Dnet.bytebuddy.experimental=true \
--Dsonar.projectKey=ots25 \
--Dsonar.projectName='ots25' \
--Dsonar.host.url=http://localhost:9001 \
--Dsonar.token=sqp_8d779222baae6552855b6cbd33c2db0596148eee
+```bash
+     ./mvnw clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+       -Dnet.bytebuddy.experimental=true \ # na Windows, Linux odstranite to vrstico
+       -Dsonar.projectKey=YOUR_PROJECT_KEY \
+       -Dsonar.projectName='YOUR_PROJECT_NAME' \
+       -Dsonar.host.url=http://localhost:9001 \
+       -Dsonar.token=YOUR_SONARQUBE_TOKEN
+```

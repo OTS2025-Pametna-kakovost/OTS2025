@@ -1,7 +1,5 @@
 # Zagotavljanje kakovosti v sklopu razvoja informacijskih rešitev (24. in 25. 11. 2025)
 
-# ====================================================================================
-
 Ta repozitorij je pripravljena **učna aplikacija** za delavnico "Zagotavljanje kakovosti v sklopu razvoja informacijskih rešitev". Cilj je prikazati pot **od kode do produkcije** s poudarkom na **pragovih kakovosti** in avtomatizaciji.
 
 ---
