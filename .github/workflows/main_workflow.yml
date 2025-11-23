@@ -3,7 +3,7 @@ name: Main CI/CD Pipeline
 on:
   workflow_dispatch:
   push:
-    branches: [ "main", "prod" ]
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
@@ -16,13 +16,12 @@ permissions:
 jobs:
 
   # ======================================================
-  # CI PART (MAIN / PR)
+  # CI PART (always on push to main)
   # ======================================================
 
   build_backend:
     name: Build backend
     runs-on: ubuntu-latest
-    if: github.ref != 'refs/heads/prod'  # CI za main/PR
 
     services:
       postgres:
@@ -50,7 +49,6 @@ jobs:
           java-version: '20'
           cache: maven
 
-      # Unit testi (hitro) + build
       - name: Run unit tests (backend)
         run: mvn -B test --file pom.xml
         working-directory: backend
@@ -59,7 +57,6 @@ jobs:
         run: mvn -B package --file pom.xml
         working-directory: backend
 
-      # (opcijsko) Jacoco report kot artifact, če ga generiraš v pom.xml
       - name: Upload Jacoco report (optional)
         if: always()
         uses: actions/upload-artifact@v4
@@ -72,7 +69,6 @@ jobs:
   build_frontend:
     name: Build frontend
     runs-on: ubuntu-latest
-    if: github.ref != 'refs/heads/prod'
     needs: [build_backend]
 
     steps:
@@ -98,7 +94,6 @@ jobs:
   qodana:
     name: Qodana Scan
     runs-on: ubuntu-latest
-    if: github.ref != 'refs/heads/prod'
     needs: [build_backend, build_frontend]
 
     permissions:
@@ -109,7 +104,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
       - name: 'Qodana Scan'
@@ -125,7 +119,6 @@ jobs:
   sonar_frontend:
     name: SonarCloud Frontend
     runs-on: ubuntu-latest
-    if: github.ref != 'refs/heads/prod'
     needs: [build_frontend]
 
     defaults:
@@ -159,7 +152,6 @@ jobs:
   sonar_backend:
     name: SonarCloud Backend
     runs-on: ubuntu-latest
-    if: github.ref != 'refs/heads/prod'
     needs: [build_backend]
 
     defaults:
@@ -204,7 +196,6 @@ jobs:
   docker_build_and_scan_backend:
     name: Backend Docker build + Snyk report
     runs-on: ubuntu-latest
-    if: github.ref != 'refs/heads/prod'
     needs: [build_backend]
 
     steps:
@@ -302,7 +293,6 @@ jobs:
   docker_build_and_scan_frontend:
     name: Frontend Docker build + Snyk report
     runs-on: ubuntu-latest
-    if: github.ref != 'refs/heads/prod'
     needs: [build_frontend]
 
     steps:
@@ -440,13 +430,13 @@ jobs:
 
 
   # ======================================================
-  # DEPLOY PART (PROD)
+  # DEPLOY PART (now also runs on main)
   # ======================================================
 
   BE-build-test-package:
-    name: BE Build & Test & Package (prod)
+    name: BE Build & Test & Package (deploy)
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/prod'
+    needs: [build_backend]
 
     services:
       postgres:
@@ -485,9 +475,8 @@ jobs:
 
 
   BE-docker-image-delivery:
-    name: BE Docker Image Delivery (prod)
+    name: BE Docker Image Delivery (deploy)
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/prod'
     needs: BE-build-test-package
 
     steps:
@@ -525,9 +514,9 @@ jobs:
 
 
   FE-build:
-    name: FE Build (prod)
+    name: FE Build (deploy)
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/prod'
+    needs: [build_frontend]
 
     steps:
       - name: Checkout repository
@@ -564,9 +553,8 @@ jobs:
 
 
   FE-deploy:
-    name: FE Deployment (prod)
+    name: FE Deployment (deploy)
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/prod'
     needs: [FE-build, BE-build-test-package]
 
     steps:
