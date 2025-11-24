@@ -1,4 +1,4 @@
-# OTS2025 — Pametna kakovost: od kode do produkcije (AI, SonarQube, pragovi kakovosti)
+# OTS2025 — Pametna kakovost: od kode do produkcije (AI, SonarQube, pragovi kakovosti)!!
 
 Ta repozitorij je pripravljena **učna aplikacija** za delavnico OTS 2025. Cilj je prikazati pot **od kode do produkcije** s poudarkom na **pragovih kakovosti** in avtomatizaciji.
 
